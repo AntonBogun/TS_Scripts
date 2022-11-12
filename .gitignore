@@ -1,0 +1,18 @@
+# The base scripts included by default
+Export JSON.lobster
+modules/color.lobster
+modules/std.lobster
+modules/stdtype.lobster
+modules/vec.lobster
+
+# ytapi personal data
+ytapi/diff.txt
+ytapi/*.csv
+ytapi/temp.txt
+ytapi/headers_auth.json
+
+# bookmark personal data
+python/buffer.txt
+
+# personal data
+test.lobster
