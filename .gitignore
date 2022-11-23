@@ -16,3 +16,7 @@ python/buffer.txt
 
 # personal data
 test.lobster
+
+#google drive
+.tmp.driveupload
+.tmp.drivedownload

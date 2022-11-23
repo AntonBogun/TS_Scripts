@@ -217,12 +217,12 @@ def dump_playlist_list_treesheets(playlists,filename):
 #[0,1,2]<>[0,3,4] = ([],[(1,2)],[(1,2)])
 #[0,1,2]<>[0,1,2,3] = ([],[],[(3,1)])
 #[0,1,2,3]<>[0,1,2] = ([],[(3,1)],[])
-#[0,1,2,3,4,5,6]<>[0,3,4,7,2,1,5] = ([(1,1,5),(2,1,4),(3,2,1)],[(6,1)],[(3,1)])
+#[0,1,2,3,4,5,6]<>[0,3,4,7,2,1,5] = ([(1,1,5),(2,1,4),(3,2,1), (5, 1, 6)],[(6,1)],[(3,1)])
 def find_differences(a,b):
-    state=None#0=same,1=diff,2=unknown
-    range_start=None; last=None
+    state=None#previous comparison state, 0=same,1=diff,2=deleted
+    rs=None; last=None #range start index, last range index
     diff=[]; dell=[]; unknown=[]
-    #setup b index dictionary
+    #setup b index dictionary (value:indexes)
     b_index={}
     for i in range(len(b)):
         if b[i] not in b_index:
@@ -232,46 +232,47 @@ def find_differences(a,b):
     for i in range(len(a)):
         if a[i] in b_index:
             b_i=b_index[a[i]].popleft()
-            if len(b_index[a[i]])==0:
-                del b_index[a[i]]
-            if state==None: range_start=i
-            elif state==0 and b_i!=i: range_start=i
-            elif state==1 and b_i!=last+1:
-                diff.append((range_start,i-range_start,last-i+range_start+1))
-                range_start=i
+            if len(b_index[a[i]])==0: del b_index[a[i]]#not sure does anything
+            if state==None: rs=i #init rs=0
+            elif state==0 and b_i!=i: rs=i#beginning of diff
+            elif state==1 and b_i!=last+1:#end of diff?
+                diff.append((rs,i-rs,last-i+rs+1))#append diff
+                rs=i
             elif state==2:
-                dell.append((range_start,i-range_start))
-                range_start=i
-            state=int(b_i!=i)
+                dell.append((rs,i-rs))#end of deleted, append
+                rs=i
+            state=int(b_i!=i)#fancy way of saying if b_i!=i: state=1 else: state=0
             last=b_i
         else:
-            if state==None: range_start=i
-            elif state==0: range_start=i
-            elif state==1:
-                diff.append((range_start,i-range_start,last-i+range_start+1))
-                range_start=i
+            if state==None: rs=i #rs=0
+            elif state==0: rs=i #beginning of deleted
+            elif state==1: #end of diff
+                diff.append((rs,i-rs,last-i+rs+1))#append diff
+                rs=i
             state=2
+    #end cleanup
     if state==1:
-        diff.append((range_start,len(a)-range_start,last-len(a)+range_start+1))
+        diff.append((rs,len(a)-rs,last-len(a)+rs+1))
     elif state==2:
-        dell.append((range_start,len(a)-range_start))
-    #find unknown
-    sorted_b_index=[[[x[0],y] for y in x[1]] for x in b_index.items()]
-    sorted_b_index=[x for y in sorted_b_index for x in y]
-    sorted_b_index.sort(key=lambda x:x[1])
-    start_range=None; last=None; llen=0
+        dell.append((rs,len(a)-rs))
+    #find unknown (note that items in b that were in a are no longer in b_index)
+    sorted_b_index=[[[x[0],y] for y in x[1]] for x in b_index.items()]#unpack b_index
+    sorted_b_index=[x for y in sorted_b_index for x in y]#flatten
+    sorted_b_index.sort(key=lambda x:x[1])#sort by index
+    rs=None; last=None; llen=0#range start index, last range index, length of range (didn't feel like last-i+rs+1?)
     for i in range(len(sorted_b_index)):
         if last==None:
-            start_range=sorted_b_index[i][1]
+            rs=sorted_b_index[i][1]
             llen=0
-        elif last!=sorted_b_index[i][1]-1:
-            unknown.append((start_range,llen))
-            start_range=sorted_b_index[i][1]
+        elif last!=sorted_b_index[i][1]-1:#end of range?
+            unknown.append((rs,llen))
+            rs=sorted_b_index[i][1]
             llen=0
         last=sorted_b_index[i][1]
         llen+=1
-    if start_range!=None:
-        unknown.append((start_range,llen))
+    #end cleanup
+    if rs!=None:
+        unknown.append((rs,llen))
     return (diff,dell,unknown)
 
 
