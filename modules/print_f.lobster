@@ -14,7 +14,7 @@ def print_f(log_list:[string],str,end="\n") -> void:
 
 //!FIX: breaks when no \ or / in path
 //**never forget unicode_to_string
-//save to the same folder as file. works (?) with both \ and /
+//save to the same folder as the cts file. works (?) with both \ and /
 def write_log(log_list:[string],name="log.txt") -> int:
     let curr=ts_get_filename()
     let pos=max(find_string_reverse(curr,"\\"),find_string_reverse(curr,"/"))

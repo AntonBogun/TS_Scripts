@@ -92,7 +92,7 @@ def ytapi(l_l):
         let result=read_lines(buffer)
         if result:
             let len=length(result)
-            let preset2="[3](3)*0* playlist count <5,{len+1};*1* title, *2* description, *3* count, *4* author, *5* id"
+            let preset2="[3](3)*0* playlist count <?5,{len+1};*1* title, *2* description, *3* count, *4* author, *5* id"
             let strlist2=["Playlists: {len}","Title","Description","Amount of Tracks","Author","Playlist ID"]
             if_err_print_return(l_l,ts_write_from_preset(preset2,strlist2,4,4))
             for(len) i:
@@ -123,7 +123,7 @@ def ytapi(l_l):
         let result=read_lines("{buffer}\\{playlist_id}.csv")
         if result:
             let len=length(result)
-            let preset3="[3](3)*0* track count <6,{len};*1* index, *2* title, *3* artists, *4* album name, *5* duration, *6* link"
+            let preset3="[3](3)*0* track count <?6,{len};*1* index, *2* title, *3* artists, *4* album name, *5* duration, *6* link"
             let strlist3=["Playlist name: {result[0]}; Tracks: {len-1}","Index","Title","Artists","Album Name","Duration","Link to Track in Playlist Queue"]
             //the name of the playlist is in the first row of the file, therefore the length of the playlist is one less than the length of the file
             //the grid also thus needs to be the same length as the file, top row replaced by description row

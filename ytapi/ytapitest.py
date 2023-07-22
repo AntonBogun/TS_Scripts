@@ -1,6 +1,7 @@
 from ytmusicapi import YTMusic
 import json,csv,argparse,os
 from collections import deque
+import pandas as pd
 
 current_file_path=__file__
 last_slash=current_file_path.rfind("\\")
@@ -275,6 +276,133 @@ def find_differences(a,b):
         unknown.append((rs,llen))
     return (diff,dell,unknown)
 
+#format:
+#context
+#range begin
+#"..." (if range begin doesn't overlap range end)
+#range end
+#context
+
+#how output should look like (formatted through pandas)
+#diff: f"{oldline} {val} {"-" if range else " "} {newline} {val}"
+#del: f"{line} {"--" if del else "  "} {line}"
+#unknown: f"{line} {"++" if unknown else "  "} {line}"
+
+#oldlines, newlines and lines = real index + zline (zline is an offset)
+
+#context size depends on the size of "context" argument
+#range size depends on the size of "rangesize" argument
+
+#format of diff, dell, unknown depends on the output of find_differences
+
+import pandas as pd
+def print_difference_iterator(a,b,diff,dell,unknown,context=1,rangesize=1,zline=0,strfunc=str):
+    yield "DIFFERENCE:"
+    first_print=True
+    for i in range(len(diff)):
+        df=pd.DataFrame(columns=["pos","val","sep","new_pos","val"])
+        #add context
+        for j in range(-context,0):
+            if diff[i][0]+j<0 and diff[i][2]+j<0:
+                continue
+            df.loc[len(df)]=["","","   ","",""]
+            if diff[i][0]+j>=0:
+                df.loc[len(df)-1,"pos"]=diff[i][0]+j+zline
+                df.loc[len(df)-1,"val"]=strfunc(a[diff[i][0]+j])
+            if diff[i][2]+j>=0:
+                df.loc[len(df)-1,"new_pos"]=diff[i][2]+j+zline
+                df.loc[len(df)-1,"val"]=strfunc(b[diff[i][2]+j])
+        #add range
+        if diff[i][1]-rangesize*2<=1:
+            for j in range(diff[i][1]):
+                df.loc[len(df)]=["",""," - ","",""]
+                df.loc[len(df)-1,"pos"]=diff[i][0]+j+zline
+                df.loc[len(df)-1,"val"]=strfunc(a[diff[i][0]+j])
+                df.loc[len(df)-1,"new_pos"]=diff[i][2]+j+zline
+                df.loc[len(df)-1,"val"]=strfunc(b[diff[i][2]+j])
+        else:
+            for j in range(rangesize):
+                df.loc[len(df)]=["",""," - ","",""]
+                df.loc[len(df)-1,"pos"]=diff[i][0]+j+zline
+                df.loc[len(df)-1,"val"]=strfunc(a[diff[i][0]+j])
+                df.loc[len(df)-1,"new_pos"]=diff[i][2]+j+zline
+                df.loc[len(df)-1,"val"]=strfunc(b[diff[i][2]+j])
+            df.loc[len(df)]=["","","...","",""]
+            for j in range(rangesize):
+                df.loc[len(df)]=["",""," - ","",""]
+                df.loc[len(df)-1,"pos"]=diff[i][0]+diff[i][1]-rangesize+j+zline
+                df.loc[len(df)-1,"val"]=strfunc(a[diff[i][0]+diff[i][1]-rangesize+j])
+                df.loc[len(df)-1,"new_pos"]=diff[i][2]+diff[i][1]-rangesize+j+zline
+                df.loc[len(df)-1,"val"]=strfunc(b[diff[i][2]+diff[i][1]-rangesize+j])
+        #add bottom context
+        for j in range(1,context+1):
+            if diff[i][0]+diff[i][1]+j>=len(a) and diff[i][2]+diff[i][1]+j>=len(b):
+                continue
+            df.loc[len(df)]=["","","   ","",""]
+            if diff[i][0]+diff[i][1]+j<len(a):
+                df.loc[len(df)-1,"pos"]=diff[i][0]+diff[i][1]+j+zline
+                df.loc[len(df)-1,"val"]=strfunc(a[diff[i][0]+diff[i][1]+j])
+            if diff[i][2]+diff[i][1]+j<len(b):
+                df.loc[len(df)-1,"new_pos"]=diff[i][2]+diff[i][1]+j+zline
+                df.loc[len(df)-1,"val"]=strfunc(b[diff[i][2]+diff[i][1]+j])
+        #print, header only on first print
+        yield df.to_string(index=False,header=first_print)
+        first_print=False
+        yield ""
+    yield "\n\nDELETED:"
+    first_print=True
+    for i in range(len(dell)):
+        df=pd.DataFrame(columns=["old_pos","deleted","sep"])
+        #add context
+        for j in range(-context,0):
+            if dell[i][0]+j<0:
+                continue
+            df.loc[len(df)]=["","","  "]
+            df.loc[len(df)-1,"old_pos"]=dell[i][0]+j+zline
+            df.loc[len(df)-1,"deleted"]=strfunc(a[dell[i][0]+j])
+        #add deleted
+        for j in range(dell[i][1]):
+            df.loc[len(df)]=["","","--"]
+            df.loc[len(df)-1,"old_pos"]=dell[i][0]+j+zline
+            df.loc[len(df)-1,"deleted"]=strfunc(a[dell[i][0]+j])
+        #add bottom context
+        for j in range(1,context+1):
+            if dell[i][0]+dell[i][1]+j>=len(a):
+                continue
+            df.loc[len(df)]=["","","  "]
+            df.loc[len(df)-1,"old_pos"]=dell[i][0]+dell[i][1]+j+zline
+            df.loc[len(df)-1,"deleted"]=strfunc(a[dell[i][0]+dell[i][1]+j])
+        #print, header only on first print
+        yield df.to_string(index=False,header=first_print)
+        first_print=False
+        yield ""
+    yield "\n\nNEW:"
+    first_print=True
+    for i in range(len(unknown)):
+        df=pd.DataFrame(columns=["new_pos","added","sep"])
+        #add context
+        for j in range(-context,0):
+            if unknown[i][0]+j<0:
+                continue
+            df.loc[len(df)]=["","","  "]
+            df.loc[len(df)-1,"new_pos"]=unknown[i][0]+j+zline
+            df.loc[len(df)-1,"added"]=strfunc(b[unknown[i][0]+j])
+        #add added
+        for j in range(unknown[i][1]):
+            df.loc[len(df)]=["","","++"]
+            df.loc[len(df)-1,"new_pos"]=unknown[i][0]+j+zline
+            df.loc[len(df)-1,"added"]=strfunc(b[unknown[i][0]+j])
+        #add bottom context
+        for j in range(1,context+1):
+            if unknown[i][0]+unknown[i][1]+j>=len(b):
+                continue
+            df.loc[len(df)]=["","","  "]
+            df.loc[len(df)-1,"new_pos"]=unknown[i][0]+unknown[i][1]+j+zline
+            df.loc[len(df)-1,"added"]=strfunc(b[unknown[i][0]+unknown[i][1]+j])
+        #print, header only on first print
+        yield df.to_string(index=False,header=first_print)
+        first_print=False
+        yield ""
 
 
 if __name__=="__main__":
@@ -308,10 +436,11 @@ if __name__=="__main__":
         dump_playlist_treesheets(playlist,file)
         print(file,end="")
     else:
-        if args.diff:#rename old playlist to temp.txt if exists (using os.rename), store new playlist in place, store differences of lines in diff.txt
-            if not os.path.exists(file):
-                print("File does not exist {}".format(file))
-                exit(1)
+        #rename old playlist to temp.txt if exists (using os.rename), store new playlist in place, store differences of lines in diff.txt
+        if args.diff and os.path.exists(file):
+            # if not os.path.exists(file):
+            #     print("File does not exist {}".format(file))
+            #     exit(1)
             request=request_playlist(args.playlist_id)
             #=can be commented starting here
             if os.path.exists(directory+"temp.txt"):
@@ -326,15 +455,18 @@ if __name__=="__main__":
                     diffs=find_differences(old_lines,new_lines)
                     with open(directory+"diff.txt","w",encoding="utf-8") as f:
                         diff=diffs[0]; dell=diffs[1]; unknown=diffs[2]
-                        f.write("(1 based indexes, add 1 to convert to lines in the file)\ndifferences:\n(old start-old inclusive end) -> (new start-new inclusive end)\n")
-                        for i in range(len(diff)):
-                            f.write("({}-{}) -> ({}-{})\n".format(diff[i][0],diff[i][0]+diff[i][1]-1,diff[i][2],diff[i][2]+diff[i][1]-1))
-                        f.write("\ndeleted (old):\nstart-inclusive end\nNOTE: if youtube changes track length by a second the video would be marked as deleted and unknown at the same time\n")
-                        for i in range(len(dell)):
-                            f.write("{}-{}\n".format(dell[i][0],dell[i][0]+dell[i][1]-1))
-                        f.write("\nunknown (new):\nstart-inclusive end\n")
-                        for i in range(len(unknown)):
-                            f.write("{}-{}\n".format(unknown[i][0],unknown[i][0]+unknown[i][1]-1))
+                        f.write("(1 based indexes, add 1 to convert to lines in the file)\n")
+                        f.write("NOTE: if youtube changes track length by a second the video would be marked as deleted and unknown at the same time\n\n\n")
+                        for s in print_difference_iterator(old_lines,new_lines,diff,dell,unknown,zline=1):
+                            f.write(s+"\n")
+                        # for i in range(len(diff)):
+                        #     f.write("({}-{}) -> ({}-{})\n".format(diff[i][0],diff[i][0]+diff[i][1]-1,diff[i][2],diff[i][2]+diff[i][1]-1))
+                        # f.write("\ndeleted (old):\nstart-inclusive end\nNOTE: if youtube changes track length by a second the video would be marked as deleted and unknown at the same time\n")
+                        # for i in range(len(dell)):
+                        #     f.write("{}-{}\n".format(dell[i][0],dell[i][0]+dell[i][1]-1))
+                        # f.write("\nunknown (new):\nstart-inclusive end\n")
+                        # for i in range(len(unknown)):
+                        #     f.write("{}-{}\n".format(unknown[i][0],unknown[i][0]+unknown[i][1]-1))
                     print("Stored differences in {}, old playlist in {}".format(directory+"diff.txt",directory+"temp.txt"),end="")
         else:
             dump_playlist_treesheets(request_playlist(args.playlist_id),file)
