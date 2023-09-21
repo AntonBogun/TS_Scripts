@@ -19,8 +19,10 @@ def actually_in(a,b):
 
 
 #requests the full playlist. does not handle errors.
-def request_playlist(playlistID):
+def request_playlist(playlistID, is_liked=False):
     #!never use trackCount when full track list is known
+    with open("C:\\Code\\temp","w", encoding="utf-8") as f:
+        json.dump(ytmusic.get_playlist(playlistID),f,indent=2,ensure_ascii=False)
     size=ytmusic.get_playlist(playlistID)["trackCount"]
     out=ytmusic.get_playlist(playlistID,limit=size)
     config={
@@ -34,7 +36,8 @@ def request_playlist(playlistID):
         "isExplicit":0,
         "duration":1,
         "duration_seconds":0,
-        "setVideoId":1,#id of the track in the playlist, needed as there can be duplicates
+        #id of the track in the playlist, needed as there can be duplicates
+        "setVideoId":0 if is_liked else 1,
         "feedbackTokens":0
     }
     out["tracks"]=filter_config(out["tracks"],config)
@@ -147,38 +150,58 @@ def filter_config(tracks,config):
         newtracks.append({k:t[k] for k in config if config[k] and actually_in(k,t)})
     return newtracks
 
-def dump_playlist_treesheets(playlist,filename):
+def dump_playlist_treesheets(playlist,filename,is_liked=False):
     with open(filename,"w",encoding="utf-8") as f:
         # json.dump(playlist,f,indent=2,ensure_ascii=False)
         # return
         writer=csv.writer(f, quoting=csv.QUOTE_NONE, escapechar="\\", lineterminator="\n",quotechar=None)
         writer.writerow([playlist["title"]])
-        for t in playlist["tracks"]:
-            writer.writerow([
-                t["title"],
-                ",".join([a["name"] for a in t["artists"]]),
-                # t["artists"][0]["name"]+(" and others" if len(t["artists"])>1 else ""),
-                # "-" if not t["album"] else t["album"]["name"],
-                "-" if not actually_in("album",t) else t["album"]["name"],
-                t["duration"],
-                t["videoId"],
-                t["setVideoId"]
-                ])
+        if not is_liked:
+            for t in playlist["tracks"]:
+                writer.writerow([
+                    t["title"],
+                    ",".join([a["name"] for a in t["artists"]]),
+                    # t["artists"][0]["name"]+(" and others" if len(t["artists"])>1 else ""),
+                    # "-" if not t["album"] else t["album"]["name"],
+                    "-" if not actually_in("album",t) else t["album"]["name"],
+                    t["duration"],
+                    t["videoId"],
+                    t["setVideoId"]
+                    ])
+        else:
+            for t in playlist["tracks"]:
+                writer.writerow([
+                    t["title"],
+                    ",".join([a["name"] for a in t["artists"]]),
+                    "-" if not actually_in("album",t) else t["album"]["name"],
+                    t["duration"],
+                    t["videoId"]
+                    ])
 
-def load_playlist_treesheets(filename):
+def load_playlist_treesheets(filename,is_liked=False):
     with open(filename,"r",encoding="utf-8") as f:
         reader=csv.reader(f, quoting=csv.QUOTE_NONE, escapechar="\\", lineterminator="\n",quotechar=None)
         title=next(reader)[0]
         tracks=[]
-        for row in reader:
-            tracks.append({
-                "title":row[0],
-                "artists":[{"name":row[1]}],
-                "album":{"name":row[2]},
-                "duration":row[3],
-                "videoId":row[4],
-                "setVideoId":row[5]
-                })
+        if not is_liked:
+            for row in reader:
+                tracks.append({
+                    "title":row[0],
+                    "artists":[{"name":row[1]}],
+                    "album":{"name":row[2]},
+                    "duration":row[3],
+                    "videoId":row[4],
+                    "setVideoId":row[5]
+                    })
+        else:
+            for row in reader:
+                tracks.append({
+                    "title":row[0],
+                    "artists":[{"name":row[1]}],
+                    "album":{"name":row[2]},
+                    "duration":row[3],
+                    "videoId":row[4]
+                    })
         return {"title":title,"tracks":tracks}
 
 # {
@@ -300,7 +323,7 @@ def print_difference_iterator(a,b,diff,dell,unknown,context=1,rangesize=1,zline=
     yield "DIFFERENCE:"
     first_print=True
     for i in range(len(diff)):
-        df=pd.DataFrame(columns=["pos","val","sep","new_pos","val"])
+        df=pd.DataFrame(columns=["pos","val","sep","new_pos","new_val"])
         #add context
         for j in range(-context,0):
             if diff[i][0]+j<0 and diff[i][2]+j<0:
@@ -311,7 +334,7 @@ def print_difference_iterator(a,b,diff,dell,unknown,context=1,rangesize=1,zline=
                 df.loc[len(df)-1,"val"]=strfunc(a[diff[i][0]+j])
             if diff[i][2]+j>=0:
                 df.loc[len(df)-1,"new_pos"]=diff[i][2]+j+zline
-                df.loc[len(df)-1,"val"]=strfunc(b[diff[i][2]+j])
+                df.loc[len(df)-1,"new_val"]=strfunc(b[diff[i][2]+j])
         #add range
         if diff[i][1]-rangesize*2<=1:
             for j in range(diff[i][1]):
@@ -319,21 +342,21 @@ def print_difference_iterator(a,b,diff,dell,unknown,context=1,rangesize=1,zline=
                 df.loc[len(df)-1,"pos"]=diff[i][0]+j+zline
                 df.loc[len(df)-1,"val"]=strfunc(a[diff[i][0]+j])
                 df.loc[len(df)-1,"new_pos"]=diff[i][2]+j+zline
-                df.loc[len(df)-1,"val"]=strfunc(b[diff[i][2]+j])
+                df.loc[len(df)-1,"new_val"]=strfunc(b[diff[i][2]+j])
         else:
             for j in range(rangesize):
                 df.loc[len(df)]=["",""," - ","",""]
                 df.loc[len(df)-1,"pos"]=diff[i][0]+j+zline
                 df.loc[len(df)-1,"val"]=strfunc(a[diff[i][0]+j])
                 df.loc[len(df)-1,"new_pos"]=diff[i][2]+j+zline
-                df.loc[len(df)-1,"val"]=strfunc(b[diff[i][2]+j])
+                df.loc[len(df)-1,"new_val"]=strfunc(b[diff[i][2]+j])
             df.loc[len(df)]=["","","...","",""]
             for j in range(rangesize):
                 df.loc[len(df)]=["",""," - ","",""]
                 df.loc[len(df)-1,"pos"]=diff[i][0]+diff[i][1]-rangesize+j+zline
                 df.loc[len(df)-1,"val"]=strfunc(a[diff[i][0]+diff[i][1]-rangesize+j])
                 df.loc[len(df)-1,"new_pos"]=diff[i][2]+diff[i][1]-rangesize+j+zline
-                df.loc[len(df)-1,"val"]=strfunc(b[diff[i][2]+diff[i][1]-rangesize+j])
+                df.loc[len(df)-1,"new_val"]=strfunc(b[diff[i][2]+diff[i][1]-rangesize+j])
         #add bottom context
         for j in range(1,context+1):
             if diff[i][0]+diff[i][1]+j>=len(a) and diff[i][2]+diff[i][1]+j>=len(b):
@@ -344,7 +367,7 @@ def print_difference_iterator(a,b,diff,dell,unknown,context=1,rangesize=1,zline=
                 df.loc[len(df)-1,"val"]=strfunc(a[diff[i][0]+diff[i][1]+j])
             if diff[i][2]+diff[i][1]+j<len(b):
                 df.loc[len(df)-1,"new_pos"]=diff[i][2]+diff[i][1]+j+zline
-                df.loc[len(df)-1,"val"]=strfunc(b[diff[i][2]+diff[i][1]+j])
+                df.loc[len(df)-1,"new_val"]=strfunc(b[diff[i][2]+diff[i][1]+j])
         #print, header only on first print
         yield df.to_string(index=False,header=first_print)
         first_print=False
@@ -420,7 +443,7 @@ if __name__=="__main__":
     parser.add_argument("-d","--diff",action="store_true",help="find differences between two playlists")
     args=parser.parse_args()
     # args=parser.parse_args(["-i","...","-d"])#!DEBUG
-
+    is_liked=args.playlist_id=="LM"
     if args.playlists:
         file=directory+"playlists.csv"
         dump_playlist_list_treesheets(ytmusic.get_library_playlists(100),file)
@@ -429,6 +452,9 @@ if __name__=="__main__":
     #!not actually sure if playlist_id will always be a valid file name
     file=directory+args.playlist_id+".csv"
     if args.move:
+        if is_liked:
+            print("Can not move tracks in liked songs playlist")
+            exit(1)
         playlist=load_playlist_treesheets(file)
         playlist["id"]=args.playlist_id
         move_range=[int(v) for v in args.range.split(",")]
@@ -441,12 +467,12 @@ if __name__=="__main__":
             # if not os.path.exists(file):
             #     print("File does not exist {}".format(file))
             #     exit(1)
-            request=request_playlist(args.playlist_id)
             #=can be commented starting here
+            request=request_playlist(args.playlist_id,is_liked)
             if os.path.exists(directory+"temp.txt"):
                 os.remove(directory+"temp.txt")
             os.rename(file,directory+"temp.txt")
-            dump_playlist_treesheets(request,file)
+            dump_playlist_treesheets(request,file,is_liked)
             #=ending here to debug without requesting playlist
             with open(file,"r",encoding="utf-8") as new_f:
                 with open(directory+"temp.txt","r",encoding="utf-8") as old_f:
@@ -455,9 +481,9 @@ if __name__=="__main__":
                     diffs=find_differences(old_lines,new_lines)
                     with open(directory+"diff.txt","w",encoding="utf-8") as f:
                         diff=diffs[0]; dell=diffs[1]; unknown=diffs[2]
-                        f.write("(1 based indexes, add 1 to convert to lines in the file)\n")
+                        f.write("(2 based indexes)\n")
                         f.write("NOTE: if youtube changes track length by a second the video would be marked as deleted and unknown at the same time\n\n\n")
-                        for s in print_difference_iterator(old_lines,new_lines,diff,dell,unknown,zline=1):
+                        for s in print_difference_iterator(old_lines,new_lines,diff,dell,unknown,zline=2):
                             f.write(s+"\n")
                         # for i in range(len(diff)):
                         #     f.write("({}-{}) -> ({}-{})\n".format(diff[i][0],diff[i][0]+diff[i][1]-1,diff[i][2],diff[i][2]+diff[i][1]-1))
@@ -469,7 +495,7 @@ if __name__=="__main__":
                         #     f.write("{}-{}\n".format(unknown[i][0],unknown[i][0]+unknown[i][1]-1))
                     print("Stored differences in {}, old playlist in {}".format(directory+"diff.txt",directory+"temp.txt"),end="")
         else:
-            dump_playlist_treesheets(request_playlist(args.playlist_id),file)
+            dump_playlist_treesheets(request_playlist(args.playlist_id,is_liked),file,is_liked)
             print(file,end="")
     # print(file,end="")#~no point because in case of load, the file should already be known
     # # print(ytmusic.get_library_playlists())
@@ -510,7 +536,6 @@ if __name__=="__main__":
 #         continue
 #     totallen+=t["duration_seconds"]
 # print(totallen)
-
 
 
 

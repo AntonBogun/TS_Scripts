@@ -1,15 +1,4 @@
-private def test2(f):
-    let a,b=f()
-    print("{a} {b}")
-//for example: test2(fn():func(arg,arg2...))
-private def test3(f):
-    let a,b,c=f()
-    print("{a} {b} {c}")
 
-// def test0()-> int,int:
-//     return 1,2
-// def test1()-> int,int:
-//     return test0()
 
 def decode_csv(s_raw:string) -> [string], string?:
     let a,b=decode_csv(string_to_unicode(s_raw))
@@ -43,14 +32,29 @@ def decode_csv(s:[int]) -> [string], string?:
     out.push(concat_string(curr_str,""))
     return out, nil
 
-// let a,b=decode_csv("1,2,3\n4,5,6")
-// print("{a},{b}")
-// print(decode_csv("a,b,c\n1,2"))
-// print(decode_csv([48,49,50,',',51]))
-// test2(fn():decode_csv(string_to_unicode("1,2,3\n4,5,6")))
-// test2(fn():decode_csv(string_to_unicode("\\,,\\,\\\\e,aad")))
-// test2(fn():decode_csv(string_to_unicode("\\,,\\,\\e,aad")))
+def decode_int(s:string) -> int, string?:
+    let a,b=string_to_int(s)
+    if not b:
+        return 0, "Could not parse integer: {s}"
+    return a, nil
 
+
+def encode_string(s:string) -> string:
+    return encode_string(string_to_unicode(s))
+def encode_string(s:[int]) -> string:
+    let out=[]
+    for(s) c:
+        if c=='\\':
+            out.push("\\\\")
+        elif c=='\"':
+            out.push("\\\"")
+        else:
+            out.push(unicode_to_string([c]))
+    return "\""+concat_string(out,"")+"\""
+
+
+// print(encode_string("a\"b\\c"))
+// print(encode_string(""))
 
 def encode_csv(strings) -> string:
     let out=[]
@@ -127,3 +131,22 @@ def is_num(char:int) -> int:
     return char>=48 and char<=57
 // print(is_num('a'))
 
+
+def starts_with(s:string, prefix:string) -> bool:
+    if length(s)<length(prefix):
+        return false
+    return substring(s,0,length(prefix))==prefix
+
+def safe_slice(v, start:int, len:int):
+    if start<0:
+        len+=start
+        start=0
+    if start>=length(v):
+        len-=start-length(v)
+        start=length(v)
+    if start+len>length(v):
+        len=length(v)-start
+    if len<0:
+        len=0
+    return slice(v,start,len)
+// print(safe_slice([1,2,3],7,1))

@@ -26,3 +26,7 @@ def write_log(log_list:[string],name="log.txt") -> int:
 
 def write_log(str:string,name="log.txt") -> int:
     return write_log([str],name)
+
+def print_f_and_status(log_list:[string],str,end="\n") -> void:
+    print_f(log_list,str,end)
+    ts_set_status_message(str)

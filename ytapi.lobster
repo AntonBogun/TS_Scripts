@@ -59,7 +59,7 @@ def ytapi(l_l):
                 let row,err=decode_csv(result[i+1])
                 if_err_print_return(l_l,err,"Error decoding track {i}: {err}")
                 if_err_print_return(l_l,length(row)!=6,"Invalid row length at track {i}: {row}")
-                let preset5="[{i+1}]*0*,*1*,*2*,*3*,*4*,*5*"
+                let preset5="(0)[{i+1}]*0*,*1*,*2*,*3*,*4*,*5*"
                 let strlist5=["{i}",row[0],row[1],row[2],row[3],"https://music.youtube.com/watch?v={row[4]}&list={playlist_id}"]
                 if_err_print_return(l_l,ts_write_from_preset(preset5,strlist5,6,len+1))
             print_f(l_l,"Tracks moved successfully.")
@@ -69,7 +69,7 @@ def ytapi(l_l):
     move_in_grid(0,0)//status
     if ts_get_text()!="LOADED":
         if_err_print_return(l_l,ts_get_text()!="","For reloading the preset, ensure top left cell is empty.")
-        var preset="*0* preset done, *1* id, *2* action;"
+        var preset="(0)[0]*0* preset done, *1* id, *2* action;"
         preset+="*3* preset info, *4* id describe,*5* action describe"
         preset+="<2,4;*6* load playlists,*7*;"
         preset+="*8* load playlist from id,*9*;"
@@ -79,7 +79,7 @@ def ytapi(l_l):
         let strlist=["LOADED","PLAYLIST_ID","LIBRARY_REQUEST_PLAYLISTS"]
         strlist.append_into(["In order to reload this preset, please clear text in the top left cell and run the script on any cell without a subgrid. The script determines a move action if the top left cell of a selection has a subgrid, so run the script when you are sure you\'ve done everything correctly (or make sure you can CTRL+Z)","Playlist ID, used by actions REQUEST_PLAYLIST and LOAD_FILE_PLAYLIST.","Action to perform when running the script with a loaded preset."])
         strlist.append_into(["LIBRARY_REQUEST_PLAYLISTS","Request playlists from library and saves to temporary file (/scripts/ytapi/playlists.csv). Authentication must be present.","REQUEST_PLAYLIST","Request songs in playlist. Will save the data to file (/scripts/ytapi/*PLAYLIST_ID*.csv). Large playlists may require waiting for some time.","LOAD_FILE_PLAYLIST","Load playlist tracks from file (/scripts/ytapi/*PLAYLIST_ID*.csv). Faster than requesting playlist, but may be outdated. Moving tracks in outdated playlist can result in unexpected track order."])
-        strlist.append_into(["Please follow instructions at https://ytmusicapi.readthedocs.io/en/latest/setup.html to get authentication headers data, and put it in the file *INSTALL_DIRECTORY*/scripts/ytapi/headers_auth.json. Using Firefox is highly recommended.","Errors will be attempted to be logged under *CURRENT_TREESHEET_FILE_DIRECTORY*/log.txt. It is recommended to check the log file after each run.","Moving tracks in playlist is done by selecting a range of rows with index columns, and then creating a 1x1 subgrid in the index column on the top row in selection, and writing the insertion index in the cell. The subgrid is automatically removed. Example: range (1-5) with selected index of 9 will be moved before 9, therefore becoming (4-8). Note that the correct playlist ID must be present in the preset. Authentication must be present. Additionally, the time of the request is linear to the number being moved, so moving a large number of tracks may take a long time."])
+        strlist.append_into(["Please follow instructions at https://ytmusicapi.readthedocs.io/en/stable/setup/browser.html to get authentication headers data, and put it in the file *INSTALL_DIRECTORY*/scripts/ytapi/headers_auth.json. Using Firefox is highly recommended.","Errors will be attempted to be logged under *CURRENT_TREESHEET_FILE_DIRECTORY*/log.txt. It is recommended to check the log file after each run.","Moving tracks in playlist is done by selecting a range of rows with index columns, and then creating a 1x1 subgrid in the index column on the top row in selection, and writing the insertion index in the cell. The subgrid is automatically removed. Example: range (1-5) with selected index of 9 will be moved before 9, therefore becoming (4-8). Note that the correct playlist ID must be present in the preset. Authentication must be present. Additionally, the time of the request is linear to the number being moved, so moving a large number of tracks may take a long time."])
         strlist.append_into(["REQUEST_AND_DIFF_CURRENT_PLAYLIST","Request playlist and diff with current one in file (/scripts/ytapi/*PLAYLIST_ID*.csv), saves the diff in a file, along with old playlist. See log file for more info."])
         if_err_print_return(l_l,ts_write_from_preset(preset,strlist,3,3))
         return
@@ -99,7 +99,7 @@ def ytapi(l_l):
                 let row,err=decode_csv(result[i])
                 if_err_print_return(l_l,err,"Error decoding playlist at row {i}: {err}")
                 if_err_print_return(l_l,length(row)!=5,"Invalid row length at row {i}: {row}")
-                let preset3="[{i+1}]*0*,*1*,*2*,*3*,*4*"
+                let preset3="(0)[{i+1}]*0*,*1*,*2*,*3*,*4*"
                 if_err_print_return(l_l,ts_write_from_preset(preset3,row,5,len+1))
             print_f(l_l,"Playlists requested successfully.")
         else:
@@ -118,6 +118,7 @@ def ytapi(l_l):
             if_err_print_return(l_l,status,"Python script returned error status {status}: {buffer}")
             print_f(l_l,"Python run successfully: {buffer}")
         //!FIX WHEN THERE IS BUILT IN WAY TO GET INSTALL PATH
+        let is_liked=playlist_id=="LM"
         let status, buffer = launch_subprocess(["python", "{api_location}\\location.py"])
         if_err_print_return(l_l,status,"Python script returned error status {status}: {buffer}")
         let result=read_lines("{buffer}\\{playlist_id}.csv")
@@ -132,8 +133,11 @@ def ytapi(l_l):
                 let row,err=decode_csv(result[i+1])
                 if_err_print_return(l_l,err,"Error decoding track {i}: {err}")
                 //index is inferred, however also contains setVideoID, which is irrelevant
-                if_err_print_return(l_l,length(row)!=6,"Invalid row length at track {i}: {row}")
-                let preset4="[{i+1}]*0*,*1*,*2*,*3*,*4*,*5*"
+                if not is_liked:
+                    if_err_print_return(l_l,length(row)!=6,"Invalid row length at track {i}: {row}")
+                else:
+                    if_err_print_return(l_l,length(row)!=5,"Invalid row length at track {i}: {row}")
+                let preset4="(0)[{i+1}]*0*,*1*,*2*,*3*,*4*,*5*"
                 let strlist4=["{i}",row[0],row[1],row[2],row[3],"https://music.youtube.com/watch?v={row[4]}&list={playlist_id}"]
                 if_err_print_return(l_l,ts_write_from_preset(preset4,strlist4,6,len+1))
             print_f(l_l,"Playlist loaded successfully.")
