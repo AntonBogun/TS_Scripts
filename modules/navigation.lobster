@@ -1,3 +1,4 @@
+import parse
 def move_in_selection(x:int,y:int) -> void:
     ts_goto_parent()
     let size,pos=ts_selection()
@@ -15,8 +16,13 @@ def foreach_cell(lambda) -> void: //lambda based on current cell
     for(ts_num_children()) n:
         ts_goto_child(n)
         lambda()
+        ts_goto_parent()
+def foreach_cell_depth(lambda) -> void: //lambda based on current cell
+    for(ts_num_children()) n:
+        ts_goto_child(n)
+        lambda()
         if(ts_num_children()):
-            foreach_cell(lambda)
+            foreach_cell_depth(lambda)
         ts_goto_parent()
 
 def current_grid_size() -> int, int:

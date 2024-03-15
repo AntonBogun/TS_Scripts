@@ -79,7 +79,7 @@ def resize_subgrid_at_least(x:int,y:int) -> void:
 //<*n,m;...> - make subgrid of size (n,m) in current cell, previous subgrid is set at least to size (n,m)
 //#n#... - use text in n index from str_list for setting image
 //%... - remove image
-//every character other than starting characters ('*', ',', ';', '(', '[', '<', '>')
+//every character other than starting characters ('*', ',', ';', '(', '[', '<', '>','#','%')
 //are ignored within "..." regions
 //lim_x,lim_y = size limit in the initial grid
 //typical usage:

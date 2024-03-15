@@ -21,8 +21,6 @@ def actually_in(a,b):
 #requests the full playlist. does not handle errors.
 def request_playlist(playlistID, is_liked=False):
     #!never use trackCount when full track list is known
-    with open("C:\\Code\\temp","w", encoding="utf-8") as f:
-        json.dump(ytmusic.get_playlist(playlistID),f,indent=2,ensure_ascii=False)
     size=ytmusic.get_playlist(playlistID)["trackCount"]
     out=ytmusic.get_playlist(playlistID,limit=size)
     config={
@@ -500,7 +498,7 @@ if __name__=="__main__":
     # print(file,end="")#~no point because in case of load, the file should already be known
     # # print(ytmusic.get_library_playlists())
     # playlist="..."
-    
+
     # # playlist="..."
     # RESET=1
     # LOADFILE=directory+"saved.txt"

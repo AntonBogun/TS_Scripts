@@ -52,7 +52,7 @@ def connect_python(l_l,filename:string,i:int=0):
                 elif op=="goto":
                     _py_if_err_print_return(l_l,ts_goto(inst[1]),i,j,callnum,instlen,buffer)
                 elif op=="write":
-                    _py_if_err_print_return(l_l,ts_write_from_preset(inst[1],safe_slice(inst,2,-1)),i,j,callnum,instlen,buffer)
+                    _py_if_err_print_return(l_l,ts_write_from_preset(inst[1],safe_slice(inst,2,length(inst))),i,j,callnum,instlen,buffer)
                 elif op=="exit":
                     tocall=0
                     break
@@ -95,8 +95,8 @@ def dump_cell_data(lines,recrusivedepth:int=0,top=1)->void:
             let x,y=subgrid_size()
             lines.push(",{x},{y},[")
             ts_goto_child(0)
-            for(x) i:
-                for(y) j:
+            for(y) j:
+                for(x) i:
                     if i or j:
                         lines.push(",")
                     move_in_grid(i,j)

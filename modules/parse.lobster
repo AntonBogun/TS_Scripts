@@ -150,3 +150,14 @@ def safe_slice(v, start:int, len:int):
         len=0
     return slice(v,start,len)
 // print(safe_slice([1,2,3],7,1))
+
+def strip(s:string) -> string:
+    return strip(string_to_unicode(s))
+def strip(s:[int]) -> string:
+    var start=0
+    var end=length(s)
+    while start<end and (s[start]==32 or s[start]==9 or s[start]==10 or s[start]==13):
+        start+=1
+    while end>start and (s[end-1]==32 or s[end-1]==9 or s[end-1]==10 or s[end-1]==13):
+        end-=1
+    return unicode_to_string(safe_slice(s,start,end-start))
